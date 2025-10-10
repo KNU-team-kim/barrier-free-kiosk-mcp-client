@@ -25,6 +25,12 @@ async def smart_elicitation_callback(
     print(params)
 
     data = json.loads(params.message)
+
+    if data["retrieve_output"] is False:
+        await WEBSOCKET_MANAGER[data["session_id"]].send_json(
+            {"data": data["data"]}
+        )
+
     await WEBSOCKET_MANAGER[data["session_id"]].send_json(
         {"message": data["ai_message"], "step_name": data["step_name"]}
     )
@@ -61,7 +67,7 @@ async def conversation(
                 WEBSOCKET_MANAGER[session_id] = websocket
 
                 result = await session.call_tool(
-                    name="move-in-conversation",
+                    name="resident-registration-conversation",
                     arguments={"session_id": session_id},
                 )
                 print(result)
