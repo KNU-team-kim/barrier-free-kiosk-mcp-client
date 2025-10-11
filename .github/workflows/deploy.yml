@@ -1,0 +1,47 @@
+name: deploy
+
+on:
+  push:
+    branches:
+      - develop
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_PASSWORD }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/kiosk-mcp-client:${{ github.sha }}
+
+      - name: SSH into server and deploy
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.AWS_HOST }}
+          username: ${{ secrets.AWS_USERNAME }}
+          key: ${{ secrets.AWS_KEY }}
+          script: |
+            sudo docker rm -f kiosk-mcp-client
+            sudo docker system prune -af
+            sudo docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/kiosk-mcp-client:${{ github.sha }}
+            sudo docker tag ${{ secrets.DOCKER_HUB_USERNAME }}/kiosk-mcp-client:${{ github.sha }} kiosk-mcp-client
+            sudo docker run \
+            -e MCP_SERVER_URL="${{ secrets.MCP_SERVER_URL }}" \
+            -d --name kiosk-mcp-client -e TZ=Asia/Seoul -p 8000:8000 kiosk-mcp-client       

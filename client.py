@@ -8,13 +8,14 @@ from fastapi import FastAPI, WebSocket
 from mcp.client.session import ClientSession
 from mcp.shared.context import RequestContext
 from mcp.client.streamable_http import streamablehttp_client
+import os
 
 load_dotenv()
 
 app = FastAPI()
 
 WEBSOCKET_MANAGER: dict[str, WebSocket] = {}
-MCP_SERVER_URL = "http://localhost:8001/mcp"
+MCP_SERVER_URL = os.getenv("MCP_SERVER_URL")
 
 
 async def smart_elicitation_callback(
