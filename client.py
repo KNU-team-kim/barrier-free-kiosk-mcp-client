@@ -28,6 +28,9 @@ llm_client = AsyncOpenAI()
 # 활성 웹소켓 연결을 관리하는 딕셔너리
 WEBSOCKET_MANAGER: dict[str, WebSocket] = {}
 
+# MCP 서버 주소 (환경 변수에서 로드)
+MCP_SERVER_URL = os.getenv("MCP_SERVER_URL")
+
 # --- MCP Tool -> OpenAI Schema 변환 함수 ---
 def to_openai_schema(tool) -> Dict[str, Any]:
     """MCP 도구 명세를 OpenAI API가 이해할 수 있는 JSON 스키마로 변환합니다."""
