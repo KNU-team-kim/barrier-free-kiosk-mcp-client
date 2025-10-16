@@ -181,7 +181,7 @@ async def conversation(websocket: WebSocket):
                             arguments["session_id"] = session_id
                             result = await session.call_tool(name=tool_name_to_call, arguments=arguments)
                             tool_result_content = json.dumps(
-                                {"stdout": result.stdout, "structuredContent": result.structuredContent},
+                                {"structuredContent": result.structuredContent},
                                 ensure_ascii=False,
                             )
 
