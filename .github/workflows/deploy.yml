@@ -44,4 +44,5 @@ jobs:
             sudo docker tag ${{ secrets.DOCKER_HUB_USERNAME }}/kiosk-mcp-client:${{ github.sha }} kiosk-mcp-client
             sudo docker run \
             -e MCP_SERVER_URL="${{ secrets.MCP_SERVER_URL }}" \
+            -e OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
             -d --name kiosk-mcp-client -e TZ=Asia/Seoul -p 8000:8000 kiosk-mcp-client       
