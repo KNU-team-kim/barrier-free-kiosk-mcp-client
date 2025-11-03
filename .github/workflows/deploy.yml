@@ -45,4 +45,5 @@ jobs:
             sudo docker run \
             -e MCP_SERVER_URL="${{ secrets.MCP_SERVER_URL }}" \
             -e OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
+            -e OPENAI_API_URL="${{ secrets.OPENAI_API_URL }}" \
             -d --name kiosk-mcp-client -e TZ=Asia/Seoul -p 8000:8000 kiosk-mcp-client       
