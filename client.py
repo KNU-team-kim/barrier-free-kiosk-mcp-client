@@ -23,7 +23,10 @@ load_dotenv()
 app = FastAPI()
 
 # OpenAI 클라이언트 초기화
-llm_client = AsyncOpenAI()
+llm_client = AsyncOpenAI(
+    base_url=os.getenv("OPENAI_API_URL"),
+    api_key=os.getenv("OPENAI_API_KEY")
+)
 
 # 활성 웹소켓 연결을 관리하는 딕셔너리
 WEBSOCKET_MANAGER: dict[str, WebSocket] = {}
@@ -146,7 +149,7 @@ async def conversation(websocket: WebSocket):
                     
                     # --- 3. LLM에 1차 요청 (누적된 전체 대화 기록 전달) ---
                     response = await llm_client.chat.completions.create(
-                        model="gpt-4.1",
+                        model="gpt-oss-20b",
                         messages=messages,
                         tools=tool_schemas,
                         tool_choice="auto"
@@ -198,7 +201,7 @@ async def conversation(websocket: WebSocket):
                     # --- 5. 2차 호출: 최종 답변 생성 ---
                     logger.info("Calling LLM for the second time for final response.")
                     final_response = await llm_client.chat.completions.create(
-                        model="gpt-4.1",
+                        model="gpt-oss-20b",
                         messages=messages, # Tool 호출 및 결과가 모두 포함된 전체 대화 기록 전달
                     )
                     final_answer = final_response.choices[0].message.content
