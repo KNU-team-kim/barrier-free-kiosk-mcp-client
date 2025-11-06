@@ -10,7 +10,7 @@ from loguru import logger
 
 from fastapi import FastAPI, WebSocket
 from openai import AsyncOpenAI
-from openai.types.chat import ChatCompletionMessageParam 
+from openai.types.chat import ChatCompletionMessageParam
 
 import mcp.types as types
 from mcp.client.session import ClientSession
@@ -99,6 +99,12 @@ def to_camel_case(name: str) -> str:
     name = name.replace('-', '_')
     return ''.join(word.capitalize() for word in name.split('_'))
 
+def looks_like_tool_call(data: dict) -> bool:
+    return (
+        isinstance(data, dict)
+        and "name" in data
+        and "arguments" in data
+    )
 
 # --- 웹소켓 엔드포인트 ---
 @app.websocket("/conversation")
@@ -168,6 +174,13 @@ async def conversation(websocket: WebSocket):
                         # 4-1. Tool 호출이 없을 때: LLM 답변을 바로 반환하고 대화 기록에 추가
                         logger.info("No tool call. Returning direct response.")
                         direct_answer = response_message.content or "죄송합니다. 요청을 처리할 수 없습니다."
+
+                        # 4-2. Tool Call 과정에서 content에 tool 정보가 들어오는 오류가 발생했을 때
+                        try:
+                            json.loads(direct_answer)
+                            direct_answer = "죄송합니다. 다시 한 번 말씀해주세요."
+                        except json.JSONDecodeError:
+                            pass
                         
                         messages.append({"role": "assistant", "content": direct_answer}) # LLM 답변을 기록에 추가
                         await websocket.send_json({"message": direct_answer, "step_name": "home"})
@@ -175,7 +188,6 @@ async def conversation(websocket: WebSocket):
 
                     # 4-2. Tool 호출이 있을 때: Tool 실행 및 2차 호출 진행
                     logger.info(f"LLM decided to call tools: {[tc.function.name for tc in tool_calls]}")
-                    messages.append(response_message) # Tool 호출 결정을 대화 기록에 추가
                     
                     for tool_call in tool_calls:
                         tool_name_to_call = to_kebab_case(tool_call.function.name)
@@ -184,24 +196,11 @@ async def conversation(websocket: WebSocket):
                             arguments = json.loads(tool_call.function.arguments)
                         except json.JSONDecodeError:
                             logger.error(f"Failed to parse arguments: {tool_call.function.arguments}")
-                            tool_result_content = f"Error: Invalid arguments."
                         else:
                             arguments["session_id"] = session_id
                             result = await session.call_tool(name=tool_name_to_call, arguments=arguments)
-                            tool_result_content = json.dumps(
-                                {"structuredContent": result.structuredContent},
-                                ensure_ascii=False,
-                            )
-                        logger.info(result.structuredContent)
-                        # Tool 실행 결과를 대화 기록에 추가
-                        messages.append(
-                            {
-                                "tool_call_id": tool_call.id,
-                                "role": "tool",
-                                "name": tool_call.function.name,
-                                "content": tool_result_content,
-                            }
-                        )
+
+                        messages.append({"role": "assistant", "content": "완료되었습니다."})
 
                         await websocket.send_json({"message": result.structuredContent["message"], "step_name": "home"})
 
