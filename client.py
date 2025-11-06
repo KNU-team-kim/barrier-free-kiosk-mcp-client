@@ -5,7 +5,7 @@ import uvicorn
 import os
 import re
 from dotenv import load_dotenv
-from typing import Any, Optional, List, Dict
+from typing import Any, List, Dict
 from loguru import logger
 
 from fastapi import FastAPI, WebSocket
@@ -132,12 +132,17 @@ async def conversation(websocket: WebSocket):
                 # --- 1. 대화 기록(messages)을 루프 외부에 선언 ---
                 # 시스템 프롬프트를 처음에 설정하여 대화의 전체 맥락을 관리
                 messages: List[ChatCompletionMessageParam] = [
-                    {"role": "system", "content": "당신은 AI 무인민원발급기 안내원입니다. 사용자의 요청을 분석하여, 필요하다면 제공된 Tool을 호출하고 그 결과를 바탕으로 사용자에게 친절하게 최종 답변을 생성해주세요. 지원하지 않는 서비스에 대한 문의는 명확하게 불가능하다고 답변해주세요. **모든 답변은 마크다운(*, **, ``, # 등)과 줄바꿈 문자(\\n)를 절대 사용하지 말고, 오직 일반 텍스트(plain text)로만, 그리고 반드시 한 줄의 연속된 문장으로만 작성해주세요.**"},
+                    {"role": "system", "content": (
+                        "당신은 AI 무인민원발급기 안내원입니다. 사용자의 요청을 분석하여, 필요하다면 제공된 Tool을 호출하고 그 결과를 바탕으로 사용자에게 친절하게 최종 답변을 생성해주세요."
+                        "아래와 같은 규칙을 따라주세요: "
+                        "- 지원하지 않는 서비스에 대한 문의는 명확하게 불가능하다고 답변해주세요. "
+                        "- 메시지를 음성으로 변환해야하기 때문에, 모든 대화는 이모티콘이나 특수문자(개행문자 포함), 마크다운 문법 없이 반드시 대화하는 형식으로 이루어져야 합니다."
+                    )},
                 ]
 
                 # --- 대화 시작 ---
                 initial_message = "AI 무인민원발급기입니다. 어떤 서비스를 원하시나요?"
-                await websocket.send_json({"message": initial_message, "step_name": "service_selection"})
+                await websocket.send_json({"message": initial_message, "step_name": "home"})
                 
                 # --- 2. 연속적인 대화를 위한 while 루프 유지 ---
                 while True:
@@ -165,7 +170,7 @@ async def conversation(websocket: WebSocket):
                         direct_answer = response_message.content or "죄송합니다. 요청을 처리할 수 없습니다."
                         
                         messages.append({"role": "assistant", "content": direct_answer}) # LLM 답변을 기록에 추가
-                        await websocket.send_json({"message": direct_answer, "step_name": "direct_response"})
+                        await websocket.send_json({"message": direct_answer, "step_name": "home"})
                         continue # 다음 사용자 입력을 위해 루프 계속
 
                     # 4-2. Tool 호출이 있을 때: Tool 실행 및 2차 호출 진행
@@ -187,7 +192,7 @@ async def conversation(websocket: WebSocket):
                                 {"structuredContent": result.structuredContent},
                                 ensure_ascii=False,
                             )
-
+                        logger.info(result.structuredContent)
                         # Tool 실행 결과를 대화 기록에 추가
                         messages.append(
                             {
@@ -198,16 +203,8 @@ async def conversation(websocket: WebSocket):
                             }
                         )
 
-                    # --- 5. 2차 호출: 최종 답변 생성 ---
-                    logger.info("Calling LLM for the second time for final response.")
-                    final_response = await llm_client.chat.completions.create(
-                        model="gpt-oss-20b",
-                        messages=messages, # Tool 호출 및 결과가 모두 포함된 전체 대화 기록 전달
-                    )
-                    final_answer = final_response.choices[0].message.content
-                    
-                    messages.append({"role": "assistant", "content": final_answer}) # 최종 답변도 기록에 추가
-                    await websocket.send_json({"message": final_answer, "step_name": "final_response"})
+                        await websocket.send_json({"message": result.structuredContent["message"], "step_name": "home"})
+
                     # 루프는 계속되어 사용자의 다음 질문을 기다린다.
 
     except Exception as e:
