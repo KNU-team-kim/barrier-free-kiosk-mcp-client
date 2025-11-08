@@ -202,7 +202,7 @@ async def conversation(websocket: WebSocket):
 
                         messages.append({"role": "assistant", "content": "완료되었습니다."})
 
-                        await websocket.send_json({"message": result.structuredContent["message"], "step_name": "home"})
+                        await websocket.send_json({"message": result.structuredContent["message"], "step_name": result.structuredContent["step_name"]})
 
                     # 루프는 계속되어 사용자의 다음 질문을 기다린다.
 
