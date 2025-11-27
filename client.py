@@ -24,7 +24,6 @@ app = FastAPI()
 
 # OpenAI 클라이언트 초기화
 llm_client = AsyncOpenAI(
-    base_url=os.getenv("OPENAI_API_URL"),
     api_key=os.getenv("OPENAI_API_KEY")
 )
 
@@ -160,7 +159,7 @@ async def conversation(websocket: WebSocket):
                     
                     # --- 3. LLM에 1차 요청 (누적된 전체 대화 기록 전달) ---
                     response = await llm_client.chat.completions.create(
-                        model="gpt-oss-20b",
+                        model="gpt-4.1",
                         messages=messages,
                         tools=tool_schemas,
                         tool_choice="auto"
