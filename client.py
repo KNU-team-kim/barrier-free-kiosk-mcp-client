@@ -197,6 +197,9 @@ async def conversation(websocket: WebSocket):
                             logger.error(f"Failed to parse arguments: {tool_call.function.arguments}")
                         else:
                             arguments["session_id"] = session_id
+                            
+                            logger.info(f"Calling MCP tool: '{tool_name_to_call}'")
+                            
                             result = await session.call_tool(name=tool_name_to_call, arguments=arguments)
 
                         messages.append({"role": "assistant", "content": "완료되었습니다."})
